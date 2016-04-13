@@ -1,0 +1,212 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\R_ext">
+      <UniqueIdentifier>{a5623276-4a5b-4fb8-ab17-25372752014a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\minpack.lm">
+      <UniqueIdentifier>{9fd92b2c-a8c8-45fe-95f3-588bcbabd122}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="R.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Rdefines.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Rconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Rinternals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Applic.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Arith.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\BLAS.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Boolean.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Callbacks.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Complex.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Connections.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Constants.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Error.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\eventloop.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\GetX11Image.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\GraphicsDevice.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\GraphicsEngine.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Itermacros.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Lapack.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\libextern.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Linpack.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\MathThreads.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Memory.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Parse.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Print.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\PrtUtil.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\QuartzDevice.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Rallocators.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Random.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Rdynload.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\R-ftp-http.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Riconv.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\RS.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\RStartup.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\stats_package.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\stats_stubs.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Utils.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="R_ext\Visibility.h">
+      <Filter>Header Files\R_ext</Filter>
+    </ClInclude>
+    <ClInclude Include="minpack_lm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeodesicLM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="fcn_lmder.c">
+      <Filter>Source Files\minpack.lm</Filter>
+    </ClCompile>
+    <ClCompile Include="fcn_lmdif.c">
+      <Filter>Source Files\minpack.lm</Filter>
+    </ClCompile>
+    <ClCompile Include="nls_lm.c">
+      <Filter>Source Files\minpack.lm</Filter>
+    </ClCompile>
+    <ClCompile Include="geo_lm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="prod.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="transpose.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="get_element.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fcn_lm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fcn_call.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fcn_message.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="accept.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="converge.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="destsv.f">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="dgqt.f">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="dpmpar.f">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="fdavv.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="fdjac.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="geodesiclm.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="lambda.f90">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="updatejac.f90">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>
