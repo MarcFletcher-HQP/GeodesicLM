@@ -18,7 +18,7 @@ void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, d
 	int i;
 	double sumf;
 	SEXP sexp_fvec;
-	Rprintf("inter-iteration callback! \n");
+
 	/* Note, previously this section would only run if a variable called 'iflag' was set to zero. There is no flag passed as an argument in geodesicLM,
 	as such the flag has been moved into opt_struct and must be initialised to zero before the call to geodesicLM */
 	if (OS->converged == 0) {
@@ -36,7 +36,7 @@ void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, d
 		OS->converged == 5 || OS->converged == 6 || OS->converged == 7) {
 		SETCADR(OS->fcall, OS->par);
 		PROTECT(sexp_fvec = eval(OS->fcall, OS->env));
-
+		Rprintf("OS->converged = %i", OS->converged);
 		for (i = 0; i < *m; i++)
 			fvec[i] = NUMERIC_POINTER(sexp_fvec)[i];
 		UNPROTECT(1);

@@ -7,8 +7,8 @@ nls.ga.control <- function(ftol  = sqrt(.Machine$double.eps),
                            ctol  = sqrt(.Machine$double.eps),
                            crtol = sqrt(.Machine$double.eps),
                            gtol = sqrt(.Machine$double.eps), 
-                           diag = numeric(0), epsfcn1 = 0, epsfcn2 = 0, 
-                           factor = 100, 
+                           diag = numeric(0), epsfcn1 = sqrt(.Machine$double.eps), 
+                           epsfcn2 = sqrt(.Machine$double.eps), factor = 100, 
                            maxfev = integer(), maxjev = integer(),
                            maxaev = integer(),
                            maxiter = 50, nprint = 0){
@@ -83,10 +83,11 @@ nls.ga <- function(par, lower=NULL, upper=NULL, fn, jac = NULL, acc = NULL,
     }
     
     # Use nls_lm to generate optimised parameter values.
+    sink(file = "geo_lm_debug.txt")
     out <- .Call("geo_lm", par, lower, upper, fn1, jac1, acc1, 
                  ctrl, new.env())
                  # PACKAGE = "geodesicLM")
-    
+    sink()
     # Convert hessian output into a matrix
     out$hessian <- matrix(out$hessian, nrow = length(unlist(par)))
     

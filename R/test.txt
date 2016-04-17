@@ -1,2 +1,0 @@
-Error in library(magrittr) : there is no package called 'magrittr'
-Execution halted

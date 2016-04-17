@@ -123,12 +123,11 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	fvec_new	= real_vector(m);
 	facc		= real_vector(m);
 	fjac		= real_matrix(ldfjac, n);
-	ipvt		= int_vector(n);
-	perm		= real_vector(n * n);
-	perm_t		= real_vector(n * n);
+	// perm		= real_vector(n * n);
+	// perm_t		= real_vector(n * n);
 	r			= real_vector(n * n);
-	r2			= real_vector(n * n);
-	r2_x_perm_t = real_vector(n * n);
+	// r2			= real_vector(n * n);
+	// r2_x_perm_t = real_vector(n * n);
 	hess		= real_vector(n * n);
 
 	// assign control parameters and return values to OS
@@ -231,8 +230,8 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 
 	// Set flags that dictate the method
 	info		 = 0;
-	print_level  = 0;
-	print_unit	 = 0;
+	print_level  = 4;
+	print_unit	 = 2;
 	imethod		 = 1;
 	iaccel		 = 0;
 	ibold		 = 0;
@@ -241,8 +240,8 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	analytic_jac = 0;
 	analytic_avv = 0;
 	damp_mode	 = 1;
-	accept		 = 1;
-	reject		 = 1;
+	accept		 = 2.0;
+	reject		 = 5.0;
 	maxlam		 = 100;
 	minlam		 = 0.1;
 	avmax		 = 100;
@@ -260,20 +259,18 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	UNPROTECT(1);
 	strcpy(lmfun_name, "geodesiclm");
 
-	Rprintf("Calling fcn_message\n");
 	// Store diagnostic message for regression output
 	fcn_message(message, OS->converged, info, n, OS->niter, nfev, njev, naev);
 	if ( (OS->converged < 1 || 8 < OS->converged) && (info < -12 || info > 1) )
 		warning("%s: info = %d. %s\n\n", lmfun_name, info, message);
 
 	Rprintf("Final info = %i \n", info);
+	Rprintf("Final convergence = %i \n", OS->converged);
 	Rprintf("Hessian matrix calculations \n");
 	// allocate memory to store the hessian matrix, hessian is stored in a compressed format.
 	PROTECT(sexp_hess = NEW_NUMERIC(n*n));
 	for (j = 0; j < n; j++)
 		for (i = 0; i < n; i++) {
-			perm[j*n + i] = (i + 1 == ipvt[j]) ? 1 : 0;
-			Rprintf("perm[%i*n + %i] = %g \n", j, i, perm[j*n + i]);
 			r[j*n + i] = (i <= j) ? fjac[i][j] : 0;
 			Rprintf("r[%i*n + %i] = %g \n", j, i, r[j*n + i]);
 		}
@@ -282,6 +279,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	*    |       |___r2__|         |    *
 	*    |           |_r2_x_perm_t_|    *
 	*    |_______hess_______|           */
+	/*
 	Rprintf("transpose \n");
 	transpose(perm, n, n, perm_t);
 	Rprintf("crossprod \n");
@@ -290,6 +288,12 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	matprod(r2, n, n, perm_t, n, n, r2_x_perm_t);
 	Rprintf("matprod2 \n");
 	matprod(perm, n, n, r2_x_perm_t, n, n, hess);
+	*/
+
+	/*	t(r) %*% r 
+		|__hess__|	*/
+	Rprintf("hessian");
+	crossprod(r, n, n, r, n, n, hess);
 
 	Rprintf("Assign to sexp_hess \n");
 	for (i = 0; i < n*n; i++)
