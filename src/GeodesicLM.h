@@ -33,7 +33,7 @@ typedef struct opt_struct {
 	double prtol;
 	double epsfcn1;
 	double epsfcn2;
-	double **diag;
+	double *diag;
 	double factor;
 	double accept;
 	double reject;
@@ -45,18 +45,18 @@ typedef struct opt_struct {
 }opt_struct, *OptStruct;
 
 void fcn_lm(int *m, int *n, double *par, double *fvec);
-void fcn_ja(int *ldfjac, int *n, double *par, double **fjac);
+void fcn_ja(int *ldfjac, int *n, double *par, double *fjac);
 void fcn_ac(int *ldfacc, int *n, double *par, double *v, double *facc);
-void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, double **fjac,
-	double *acc, double *lam, double **dtd, double *fvec_new, int *accepted, int *info);
+void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, double *fjac,
+	double *acc, double *lam, double *dtd, double *fvec_new, int *accepted, int *info);
 
 void F77_NAME(geodesiclm)(void(*fcn_lm)(int *m, int *n, double *par, double *fvec),
-	void(*fcn_ja)(int *ldfjac, int *n, double *par, double **fjac), 
+	void(*fcn_ja)(int *ldfjac, int *n, double *par, double *fjac), 
 	void(*fcn_ac)(int *ldfacc, int *n, double *par, double *v, double *facc),
 	double *par, double *fvec, double **fjac, int *n, int *m, 
 	void(*fcn_call)(int *m, int *n, double *par, double *v, double *a,
-		double *fvec, double **fjac, double *acc,
-		double *lam, double **dtd, double *fvec_new, int *accepted, int *info),
+		double *fvec, double *fjac, double *acc,
+		double *lam, double *dtd, double *fvec_new, int *accepted, int *info),
 	int *info, int *analytic_jac, int *analytic_Avv, int *center_diff, double *epsfcn1, double *epsfcn2, 
 	double **diag, int *damp_mode, int *niters, int *nfev, int *njev, int *naev,
 	int *maxiters, int *maxfev, int *maxjev, int *maxaev, double *maxlam, double *minlam,
@@ -68,7 +68,6 @@ void F77_NAME(geodesiclm)(void(*fcn_lm)(int *m, int *n, double *par, double *fve
 SEXP	getListElement(SEXP list, char *str);
 SEXP	SET_ARRAY_DIM(SEXP x, int m, int n);
 double	*real_vector(int n);
-double	**real_matrix(int m, int n);
 int		*int_vector(int n);
 
 void transpose(double *x, int nrx, int ncx, double *y);

@@ -39,11 +39,15 @@ void fcn_lm(int *m, int *n, double *par, double *fvec)
       }
 	Rprintf("\n");
 
+	Rprintf("Updating fvec!\n");
 	SETCADR(OS->fcall, OS->par);
 	PROTECT(sexp_fvec = eval(OS->fcall, OS->env));
 
+	Rprintf("fvec = ");
 	for (i = 0; i < *m; i++) {
 		fvec[i] = NUMERIC_POINTER(sexp_fvec)[i];
+		Rprintf("%g ", fvec[i]);
 	}
+	Rprintf("\n");
 	UNPROTECT(1);
 }

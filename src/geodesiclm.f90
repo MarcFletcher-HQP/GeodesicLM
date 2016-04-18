@@ -398,16 +398,13 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
   main: DO istep=1, maxiter
      
      info = 0
-	 open(unit = 1, file = 'f90_debug.txt')
-	 write(1, *) 'starting callback'
      CALL callback(m,n,x,v,a,fvec,fjac,acc,lam,dtd,fvec_new,accepted,info)
-	 write(1, *) 'x = ', x
-	 write(1, *) 'accepted = ', accepted
      IF( info .NE. 0) THEN
         converged = -10
         exit main
      ENDIF
      !! Update Functions
+
      !! Full or partial Jacobian Update?
      IF (accepted .GT. 0 .AND. ibroyden .LE. 0) jac_force_update = .TRUE.
      IF (accepted + ibroyden .LE. 0 .AND. .NOT. jac_uptodate) jac_force_update = .TRUE.  !Force jac update after too many failed attempts
@@ -415,13 +412,9 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
      IF (accepted .GT. 0 .AND. ibroyden .GT. 0 .AND. .NOT. jac_force_update) THEN !! Rank deficient update of jacobian matrix
         CALL UPDATEJAC(m,n,fjac, fvec, fvec_new, acc, v, a)
         jac_uptodate = .FALSE.
-		write(1, *)
-		write(1, *) 'fjac = ', fjac
-		write(1, *) 'fvec_new = ', fvec_new
      ENDIF
 
      IF( accepted .GT. 0) THEN !! Accepted step
-	 write(1, *) 'accepted step'
         fvec = fvec_new
         x = x_new
         vold = v
@@ -439,7 +432,6 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
            CALL jacobian(m,n,x,fjac)
            njev = njev + 1
         ELSE
-		write(1, *) 'jacobian was updated again!'
            CALL fdjac(m,n,x,fvec,fjac,func,h1,center_diff)
            IF (center_diff) THEN
               nfev = nfev + 2*n
@@ -480,9 +472,7 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
               CALL Updatelam_factor(lam, accepted, factoraccept, factorreject)
            CASE( 1 )
               !! Update lam directly based on Gain Factor rho (see Nielson reference)
-			  write(1, *) 'rho = ', rho
               CALL Updatelam_nelson(lam, accepted, factoraccept, factorreject, rho)
-			  write(1, *) 'new_lam = ', lam
            CASE( 2 )
               !! Update lam directly using method of Umrigar and Nightingale [unpublished]
               CALL Updatelam_Umrigar(m,n,lam,accepted, v, vold, fvec, fjac, dtd, a_param, Cold, Cnew) 
@@ -508,14 +498,12 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
         exit main
      ENDIF
 
-	 write(1, *) 'still running'
+
      IF(info .EQ. 0) THEN  !! If matrix decomposition successful:
         !! v = -1.0d+0*MATMUL(g,MATMUL(fvec,fjac)) ! velocity
         v = -1.0d+0*MATMUL(fvec, fjac)
         CALL DPOTRS('U', n, 1, g, n, v, n, info)
         
-		write(1, *) 'v = ', v
-
         ! Calcualte the predicted reduction and the directional derivative -- useful for updating lam methods
         temp1 = 0.5d+0*DOT_PRODUCT(v,MATMUL(jtj, v))/C
         temp2 = 0.5d+0*lam*DOT_PRODUCT(v,MATMUL(dtd,v))/C
@@ -527,7 +515,6 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
         IF ( imethod .LT. 10) delta = SQRT(DOT_PRODUCT(v, MATMUL(dtd, v)))  !! Update delta if not set directly
         !! update acceleration
         IF(iaccel .GT. 0) THEN
-		write(1, *) 'updating acceleration!'
            IF( analytic_Avv ) THEN 
               CALL Avv(m,n,x,v,acc)
               naev = naev + 1
@@ -588,19 +575,15 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
            accepted = MIN(accepted - 1, -1)
         ENDIF
      ELSE !! If matrix factorization fails, reject the proposed step
-	 write(1, *) 'matrix factorisation failed!'
         accepted = MIN(accepted -1, -1)
      ENDIF
-	 write(1, *) 'accepted = ', accepted
 
      !! Check Convergence
      IF (converged .EQ. 0) THEN
-	 write(1, *) 'convergence check'
         CALL convergence_check(m, n, converged, accepted, counter, &
              & C, Cnew, x, fvec, fjac, lam, x_new, &
              & nfev, maxfev, njev, maxjev, naev, maxaev, maxlam, minlam, &
              & artol, Cgoal, gtol, xtol, xrtol, ftol, frtol,cos_alpha)
-			 write(1, *) 'converged = ', converged
         IF (converged .EQ. 1 .AND. .NOT. jac_uptodate) THEN  
            !! If converged by artol with an out of date jacobian, update the jacoban to confirm true convergence
            converged = 0
@@ -608,7 +591,7 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
         END IF
      ENDIF
      
-	 write(1, *) 'still, still running!'
+
      !! Print status
      IF (print_level .EQ. 2 .AND. accepted .GT. 0) THEN
         WRITE(print_unit, *) "  istep, nfev, njev, naev, accepted", istep, nfev, njev, naev, accepted
@@ -634,7 +617,7 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
         WRITE(print_unit, *) "  v = ", v
         WRITE(print_unit, *) "  a = ", a
      ENDIF
-	 write(1, *) 'converged = ', converged
+
      ! If converged -- return
      IF(converged .NE. 0) THEN
         exit main
@@ -644,7 +627,7 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
      
   END DO main
   ! end main loop
-  write(1, *) 'exited main loop'
+  
   ! If not converged
   IF(converged .EQ. 0) converged = -1
   niters = istep
@@ -665,8 +648,7 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
      WRITE(print_unit,*) "  njev:       ", njev
      WRITE(print_unit,*) "  naev:       ", naev
   ENDIF
-  write(1, *) 'eof'
-  close(1)
+
 END SUBROUTINE geodesiclm
      
 

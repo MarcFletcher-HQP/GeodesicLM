@@ -26,8 +26,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 
 	/* Copies of inputs are stored in the C structure OS, the following are pointers to specific locations
 	in OS */
-	double  *par, *v, *a, *acc, *fvec, *fvec_new, **fjac, *facc, 
-		*hess, *perm, *perm_t, *r, *r2, *r2_x_perm_t;
+	double  *par, *v, *a, *acc, *fvec, *fvec_new, *fjac, *facc, *hess, *r;
 	int     *ipvt;
 
 	// values to be returned to R.
@@ -122,12 +121,8 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	fvec		= real_vector(m);
 	fvec_new	= real_vector(m);
 	facc		= real_vector(m);
-	fjac		= real_matrix(ldfjac, n);
-	// perm		= real_vector(n * n);
-	// perm_t		= real_vector(n * n);
+	fjac		= real_vector(ldfjac * n);
 	r			= real_vector(n * n);
-	// r2			= real_vector(n * n);
-	// r2_x_perm_t = real_vector(n * n);
 	hess		= real_vector(n * n);
 
 	// assign control parameters and return values to OS
@@ -141,7 +136,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	OS->epsfcn1 = NUMERIC_VALUE(getListElement(control, "epsfcn1"));
 	OS->epsfcn2 = NUMERIC_VALUE(getListElement(control, "epsfcn2"));
 	OS->factor  = NUMERIC_VALUE(getListElement(control, "factor"));
-	OS->diag	= real_matrix(n, n);
+	OS->diag	= real_vector(n * n);
 
 
 	/* Apparently, PROTECT_WITH_INDEX stores the location of the protected object so that the values
@@ -157,7 +152,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 			REPROTECT(sexp_diag = duplicate(sexp_diag), ipx);
 			for (i = 0; i < n; i++) {
 				for (j = 0; j < n; j++) {
-					OS->diag[i][j] = NUMERIC_POINTER(sexp_diag)[i + j * n];
+					OS->diag[i + n * j] = NUMERIC_POINTER(sexp_diag)[i + j * n];
 				}
 			}
 			mode = 2;	// What's this for? (numeric code for outcome of length(sexp_diag) == n?)
@@ -167,7 +162,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 			mode = 1;
 		}
 
-		sexp_diag = SET_ARRAY_DIM(sexp_diag, n, n);		// set dim attribute of output array (2016-03-30-01:45)
+		// sexp_diag = SET_ARRAY_DIM(sexp_diag, n, n);		// set dim attribute of output array (2016-03-30-01:45)
 		break;
 	case VECSXP:
 		#ifndef NO_VECSXP
@@ -231,7 +226,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	// Set flags that dictate the method
 	info		 = 0;
 	print_level  = 4;
-	print_unit	 = 2;
+	print_unit	 = 1;
 	imethod		 = 1;
 	iaccel		 = 0;
 	ibold		 = 0;
@@ -259,40 +254,26 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	UNPROTECT(1);
 	strcpy(lmfun_name, "geodesiclm");
 
+	Rprintf("Calling fcn_message\n");
 	// Store diagnostic message for regression output
 	fcn_message(message, OS->converged, info, n, OS->niter, nfev, njev, naev);
 	if ( (OS->converged < 1 || 8 < OS->converged) && (info < -12 || info > 1) )
 		warning("%s: info = %d. %s\n\n", lmfun_name, info, message);
 
 	Rprintf("Final info = %i \n", info);
-	Rprintf("Final convergence = %i \n", OS->converged);
-	Rprintf("Hessian matrix calculations \n");
+	Rprintf("Get upper triangular component of fjac \n");
 	// allocate memory to store the hessian matrix, hessian is stored in a compressed format.
 	PROTECT(sexp_hess = NEW_NUMERIC(n*n));
-	for (j = 0; j < n; j++)
+	for (j = 0; j < n; j++){
 		for (i = 0; i < n; i++) {
-			r[j*n + i] = (i <= j) ? fjac[i][j] : 0;
-			Rprintf("r[%i*n + %i] = %g \n", j, i, r[j*n + i]);
+			Rprintf("r[%i*n + %i] = %g \n", j, i, fjac[i + ldfjac*j]);
+			r[j*n + i] = (i <= j) ? fjac[i + ldfjac*j] : 0;
 		}
+	}
 
-	/*  perm %*% t(r) %*% r %*% t(perm)  *
-	*    |       |___r2__|         |    *
-	*    |           |_r2_x_perm_t_|    *
-	*    |_______hess_______|           */
-	/*
-	Rprintf("transpose \n");
-	transpose(perm, n, n, perm_t);
-	Rprintf("crossprod \n");
-	crossprod(r, n, n, r, n, n, r2);
-	Rprintf("matprod1 \n");
-	matprod(r2, n, n, perm_t, n, n, r2_x_perm_t);
-	Rprintf("matprod2 \n");
-	matprod(perm, n, n, r2_x_perm_t, n, n, hess);
-	*/
-
-	/*	t(r) %*% r 
-		|__hess__|	*/
-	Rprintf("hessian");
+	/*			 t(r) %*% r				   *
+	*    |      |___hess___|         |    */
+	Rprintf("calculate hessian \n");
 	crossprod(r, n, n, r, n, n, hess);
 
 	Rprintf("Assign to sexp_hess \n");
@@ -323,7 +304,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	SET_STRING_ELT(sexp_message, 0, mkChar(message));
 	if (IS_NUMERIC(sexp_diag)) {
 		for (i = 0; i < n; i++) {
-				NUMERIC_POINTER(sexp_diag)[i + i * n]= OS->diag[i][i];
+				NUMERIC_POINTER(sexp_diag)[i + i * n]= OS->diag[i + n*i];
 		}
 	}
 	else {
@@ -364,8 +345,6 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 
 	// remove protections
 	UNPROTECT(13);
-	free(fjac);
-	free(OS->diag);
 
 	// aaaand done
 	return out;

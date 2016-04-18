@@ -12,6 +12,7 @@
 
 char *fcn_message(char *msg, int converged, int info, int n, int nit, int nfev, int njev, int naev)
 {
+	Rprintf("converged = %i \n info = %i \n", converged, info);
     if      (converged == 1)
         sprintf(msg, "cosine of the angle between the residual vector and the range of the jacobian is at most 'artol'.");
     else if (converged == 2)

@@ -12,13 +12,14 @@
 
 /* This function is called by geodesiclm.f90 after each iteration, the function is evaluated at 'par' and the result
 is stored in 'fvec'. */
-void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, double **fjac,
-	double *acc, double *lam, double **dtd, double *fvec_new, int *accepted, int *info)
+void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, double *fjac,
+	double *acc, double *lam, double *dtd, double *fvec_new, int *accepted, int *info)
 {
 	int i;
 	double sumf;
 	SEXP sexp_fvec;
-
+	Rprintf("inter-iteration callback! \n");
+	Rprintf("converged = %i", OS->converged);
 	/* Note, previously this section would only run if a variable called 'iflag' was set to zero. There is no flag passed as an argument in geodesicLM,
 	as such the flag has been moved into opt_struct and must be initialised to zero before the call to geodesicLM */
 	if (OS->converged == 0) {
@@ -36,7 +37,7 @@ void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, d
 		OS->converged == 5 || OS->converged == 6 || OS->converged == 7) {
 		SETCADR(OS->fcall, OS->par);
 		PROTECT(sexp_fvec = eval(OS->fcall, OS->env));
-		Rprintf("OS->converged = %i", OS->converged);
+
 		for (i = 0; i < *m; i++)
 			fvec[i] = NUMERIC_POINTER(sexp_fvec)[i];
 		UNPROTECT(1);
@@ -45,6 +46,9 @@ void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, d
 			sumf += (fvec[i] * fvec[i]);
 
 		OS->rsstrace[OS->niter] = sumf;
+	}
+	else if (OS->converged < 0){
+		error("geodesicLM exited with converged < 0. See: converge.f90 for information on non-positive convergence codes");
 	}
 
 	if (OS->niter == OS->maxiter)
