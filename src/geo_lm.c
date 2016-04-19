@@ -235,10 +235,10 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	analytic_jac = 0;
 	analytic_avv = 0;
 	damp_mode	 = 1;
-	accept		 = 2.0;
-	reject		 = 5.0;
-	maxlam		 = 100;
-	minlam		 = 0.1;
+	accept		 = 2.0 / 3.0;
+	reject		 = 2.0 / 3.0;
+	maxlam		 = -100;
+	minlam		 = -0.1;
 	avmax		 = 100;
 
 
