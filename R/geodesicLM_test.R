@@ -26,11 +26,14 @@ data <- data.frame(x = x, y = y)
 myform <- y ~ a * sin(b * x + c) + d
 init   <- c(a = 2, b = 0.5, c = 1, d = -0.5)
 
+# control parameters for geodesicLM
+control_args <- nls.ga.control(maxiter = 200, print_level = 2, iaccel = 0)
+
 # Fit both models
 fit.minpack <- nlsLM(formula = myform, data = data, start = init,
                      control = nls.lm.control(maxiter = 200))
 fit.geodesic <- nlsLM2(formula = myform, data = data, start = init,
-                       control = nls.ga.control(maxiter = 200))
+                       control = control_args)
 
 
 dyn.unload(dllPath)

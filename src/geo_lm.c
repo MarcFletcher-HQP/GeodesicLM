@@ -13,7 +13,7 @@
 OptStruct OS;
 
 SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEXP acc_fun,
-	SEXP control, SEXP rho)
+	SEXP callback, SEXP control, SEXP rho)
 {
 	int		i, j;
 	int		m, n, ldfjac, ldfacc;	// m - # data points, n - # pars, # ldfjac - nrow(jac)
@@ -88,6 +88,8 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		PROTECT(OS->jcall = lang2(jac, OS->par));
 	if (!isNull(acc_fun))
 		PROTECT(OS->acall = lang2(acc_fun, OS->par));
+	if (!isNull(callback))
+		PROTECT(OS->callback = lang2(callback, OS->par));
 
 	if (!isEnvironment(rho)) error("rho is not an environment!");
 	OS->env = rho;	// rho is created in R by a call to new_env(), essentially blank environment.
@@ -99,16 +101,29 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	m = length(eval_test);		// number of data points
 	UNPROTECT(1);				// unprotect eval_test
 
+	/* set flags to calculate jacobian and acceleration using finite differences, unless functions are
+	supplied by the user. */
+	analytic_jac = 0;
+	analytic_avv = 0;
+
 	if (isFunction(jac)){
+		analytic_jac = 1;
 		PROTECT(eval_test = eval(OS->jcall, OS->env));
 		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
 			error("evaluation of jac function returns non-sensible value!");
 	}
 
 	if (isFunction(acc_fun)){
+		analytic_avv = 1;
 		PROTECT(eval_test = eval(OS->acall, OS->env));
 		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
 			error("evaluation of acc_fun function returns non-sensible value!");
+	}
+
+	if (isFunction(callback)) {
+		PROTECT(eval_test = eval(OS->callback, OS->env));
+		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
+			error("evaluation of callback function returns non-sensible value!");
 	}
 
 	ldfjac = m;		// jacobian has nrow == 'number of data points'
@@ -126,17 +141,18 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	hess		= real_vector(n * n);
 
 	// assign control parameters and return values to OS
-	OS->ftol	= NUMERIC_VALUE(getListElement(control, "ftol"));
-	OS->frtol	= NUMERIC_VALUE(getListElement(control, "frtol"));
-	OS->ptol	= NUMERIC_VALUE(getListElement(control, "ptol"));
-	OS->prtol	= NUMERIC_VALUE(getListElement(control, "ptol"));
-	OS->gtol	= NUMERIC_VALUE(getListElement(control, "gtol"));
-	OS->Cgoal	= NUMERIC_VALUE(getListElement(control, "Cgoal"));
-	OS->artol   = NUMERIC_VALUE(getListElement(control, "artol"));
-	OS->epsfcn1 = NUMERIC_VALUE(getListElement(control, "epsfcn1"));
-	OS->epsfcn2 = NUMERIC_VALUE(getListElement(control, "epsfcn2"));
-	OS->factor  = NUMERIC_VALUE(getListElement(control, "factor"));
-	OS->diag	= real_vector(n * n);
+	OS->ftol			= NUMERIC_VALUE(getListElement(control, "ftol"));
+	OS->frtol			= NUMERIC_VALUE(getListElement(control, "frtol"));
+	OS->xtol			= NUMERIC_VALUE(getListElement(control, "xtol"));
+	OS->xrtol			= NUMERIC_VALUE(getListElement(control, "xrtol"));
+	OS->gtol			= NUMERIC_VALUE(getListElement(control, "gtol"));
+	OS->Cgoal			= NUMERIC_VALUE(getListElement(control, "Cgoal"));
+	OS->artol			= NUMERIC_VALUE(getListElement(control, "artol"));
+	OS->epsfcn1			= NUMERIC_VALUE(getListElement(control, "epsfcn1"));
+	OS->epsfcn2			= NUMERIC_VALUE(getListElement(control, "epsfcn2"));
+	OS->damp_mode		= INTEGER_VALUE(getListElement(control, "damp_mode"));
+	OS->center_diff		= INTEGER_VALUE(getListElement(control, "center_diff")); //coercion to int from LGLSXP?
+	OS->diag			= real_vector(n * n);
 
 
 	/* Apparently, PROTECT_WITH_INDEX stores the location of the protected object so that the values
@@ -198,9 +214,16 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		OS->maxiter = 1024;
 		warning("resetting `maxiter' to 1024!");
 	}
-	OS->nprint = INTEGER_VALUE(getListElement(control, "nprint"));
-	if (OS->nprint > 0)
-		OS->nprint = 1;
+	OS->print_level		= INTEGER_VALUE(getListElement(control, "print_level"));
+	OS->imethod			= INTEGER_VALUE(getListElement(control, "imethod"));
+	OS->iaccel			= INTEGER_VALUE(getListElement(control, "iaccel"));
+	OS->ibold			= INTEGER_VALUE(getListElement(control, "ibold"));
+	OS->ibroyden		= INTEGER_VALUE(getListElement(control, "ibroyden"));
+	OS->initial_factor	= NUMERIC_VALUE(getListElement(control, "initial_factor"));
+	OS->accept			= NUMERIC_VALUE(getListElement(control, "accept"));
+	OS->reject			= NUMERIC_VALUE(getListElement(control, "reject"));
+	OS->avmax			= NUMERIC_VALUE(getListElement(control, "avmax"));
+	
 	/* The memory location reffered to by a pointer is the first "block" of memory allocated to that
 	variable. The references declared at the top of the function definition are used to refer to the
 	last "block" of memory allocated to each variable. */
@@ -225,62 +248,41 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 
 	// Set flags that dictate the method
 	info		 = 0;
-	print_level  = 4;
-	print_unit	 = 1;
-	imethod		 = 1;
-	iaccel		 = 0;
-	ibold		 = 0;
-	ibroyden	 = 0;
-	center_diff  = 0;
-	analytic_jac = 0;
-	analytic_avv = 0;
-	damp_mode	 = 1;
-	accept		 = 2.0 / 3.0;
-	reject		 = 2.0 / 3.0;
+	print_unit	 = 6;
 	maxlam		 = -100;
 	minlam		 = -0.1;
-	avmax		 = 100;
 
-
-	Rprintf("Calling geodesiclm!\n");
 	/*  */
 	F77_CALL(geodesiclm)(&fcn_lm, &fcn_ja, &fcn_ac, par, fvec, fjac, &n, &m,
-		&fcn_call, &info, &analytic_jac, &analytic_avv, &center_diff, &OS->epsfcn1, &OS->epsfcn2,
-		OS->diag, &damp_mode, &OS->niter, &nfev, &njev, &naev, &OS->maxiter, &maxfev, &maxjev, &maxaev,
-		&maxlam, &minlam, &OS->artol, &OS->Cgoal, &OS->gtol, &OS->ptol, &OS->prtol, &OS->ftol, &OS->frtol,
-		&OS->converged, &print_level, &print_unit, &imethod, &iaccel, &ibold, &ibroyden,
-		&OS->factor, &accept, &reject, &avmax);
+		&fcn_call, &info, &analytic_jac, &analytic_avv, &OS->center_diff, &OS->epsfcn1, &OS->epsfcn2,
+		OS->diag, &OS->damp_mode, &OS->niter, &nfev, &njev, &naev, &OS->maxiter, &maxfev, &maxjev, &maxaev,
+		&maxlam, &minlam, &OS->artol, &OS->Cgoal, &OS->gtol, &OS->xtol, &OS->xrtol, &OS->ftol, &OS->frtol,
+		&OS->converged, &OS->print_level, &print_unit, &OS->imethod, &OS->iaccel, &OS->ibold, &OS->ibroyden,
+		&OS->initial_factor, &OS->accept, &OS->reject, &OS->avmax);
 
 	UNPROTECT(1);
 	strcpy(lmfun_name, "geodesiclm");
 
-	Rprintf("Calling fcn_message\n");
 	// Store diagnostic message for regression output
 	fcn_message(message, OS->converged, info, n, OS->niter, nfev, njev, naev);
 	if ( (OS->converged < 1 || 8 < OS->converged) && (info < -12 || info > 1) )
 		warning("%s: info = %d. %s\n\n", lmfun_name, info, message);
 
-	Rprintf("Final info = %i \n", info);
-	Rprintf("Get upper triangular component of fjac \n");
 	// allocate memory to store the hessian matrix, hessian is stored in a compressed format.
 	PROTECT(sexp_hess = NEW_NUMERIC(n*n));
 	for (j = 0; j < n; j++){
 		for (i = 0; i < n; i++) {
-			Rprintf("r[%i*n + %i] = %g \n", j, i, fjac[i + ldfjac*j]);
 			r[j*n + i] = (i <= j) ? fjac[i + ldfjac*j] : 0;
 		}
 	}
 
 	/*			 t(r) %*% r				   *
 	*    |      |___hess___|         |    */
-	Rprintf("calculate hessian \n");
 	crossprod(r, n, n, r, n, n, hess);
 
-	Rprintf("Assign to sexp_hess \n");
 	for (i = 0; i < n*n; i++)
 		NUMERIC_POINTER(sexp_hess)[i] = hess[i];
 
-	Rprintf("Assign to sexp_fvec \n");
 	// initialise residual vector and create reference to the end of the vector.
 	PROTECT(sexp_fvec = NEW_NUMERIC(m));
 	for (i = 0; i < m; i++)
@@ -316,7 +318,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		#endif
 	}
 
-	Rprintf("Creating output list\n");
+
 	// create a list storing the output to be returned to R.
 	PROTECT(out = NEW_LIST(9));
 	SET_VECTOR_ELT(out, 0, OS->par);

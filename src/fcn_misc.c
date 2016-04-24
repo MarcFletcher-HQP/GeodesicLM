@@ -10,5 +10,5 @@
 
 #endif
 
-void fcn_ja(int *ldfjac, int *n, double *par, double *fjac) { Rprintf("Jacobians!\n"); }
-void fcn_ac(int *ldfacc, int *n, double *par, double *v, double *facc) { Rprintf("Acceleration!\n"); }
+void fcn_ja(int *ldfjac, int *n, double *par, double *fjac) {}
+void fcn_ac(int *ldfacc, int *n, double *par, double *v, double *facc) {}

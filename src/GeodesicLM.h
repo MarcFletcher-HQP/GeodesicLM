@@ -23,21 +23,29 @@ typedef struct opt_struct {
 	SEXP fcall;
 	SEXP jcall;
 	SEXP acall;
+	SEXP callback;
 	SEXP env;
 	double ftol;
 	double frtol;
 	double Cgoal;
 	double artol;
 	double gtol;
-	double ptol;
-	double prtol;
+	double xtol;
+	double xrtol;
 	double epsfcn1;
 	double epsfcn2;
 	double *diag;
-	double factor;
+	int imethod;
+	int iaccel;
+	int ibold;
+	int ibroyden;
+	double initial_factor;
 	double accept;
 	double reject;
-	int nprint;
+	double avmax;
+	int damp_mode;
+	int center_diff;
+	int print_level;
 	int maxiter;
 	int niter;
 	int converged;
@@ -53,16 +61,16 @@ void fcn_call(int *m, int *n, double *par, double *v, double *a, double *fvec, d
 void F77_NAME(geodesiclm)(void(*fcn_lm)(int *m, int *n, double *par, double *fvec),
 	void(*fcn_ja)(int *ldfjac, int *n, double *par, double *fjac), 
 	void(*fcn_ac)(int *ldfacc, int *n, double *par, double *v, double *facc),
-	double *par, double *fvec, double **fjac, int *n, int *m, 
+	double *par, double *fvec, double *fjac, int *n, int *m, 
 	void(*fcn_call)(int *m, int *n, double *par, double *v, double *a,
 		double *fvec, double *fjac, double *acc,
 		double *lam, double *dtd, double *fvec_new, int *accepted, int *info),
 	int *info, int *analytic_jac, int *analytic_Avv, int *center_diff, double *epsfcn1, double *epsfcn2, 
-	double **diag, int *damp_mode, int *niters, int *nfev, int *njev, int *naev,
+	double *diag, int *damp_mode, int *niters, int *nfev, int *njev, int *naev,
 	int *maxiters, int *maxfev, int *maxjev, int *maxaev, double *maxlam, double *minlam,
-	double *artol, double *Cgoal, double *gtol, double *ptol, double *prtol, double *ftol, double *frtol,
+	double *artol, double *Cgoal, double *gtol, double *xtol, double *xrtol, double *ftol, double *frtol,
 	int *converged, int *print_level, int *print_unit, 
-	int *imethod, int *iaccel, int *ibold, int *ibroyden, double *factor, double *accept, double *reject, 
+	int *imethod, int *iaccel, int *ibold, int *ibroyden, double *initial_factor, double *accept, double *reject, 
 	double *avmax);
 
 SEXP	getListElement(SEXP list, char *str);
@@ -77,7 +85,7 @@ char *fcn_message(char *msg, int converged, int info, int n, int nit, int nfev, 
 
 
 SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg,
-	SEXP fn, SEXP jac, SEXP acc, SEXP control, SEXP rho);
+	SEXP fn, SEXP jac, SEXP acc, SEXP callback, SEXP control, SEXP rho);
 
 extern OptStruct OS;
 

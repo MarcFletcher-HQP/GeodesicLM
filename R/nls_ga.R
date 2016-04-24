@@ -1,34 +1,44 @@
 ## nls.lm.control is called from nlsLM, used to find convergence parameters
 ## for the nlsLM algorithm.
 nls.ga.control <- function(ftol  = sqrt(.Machine$double.eps),
-                           frtol = sqrt(.Machine$double.eps),
-                           ptol  = sqrt(.Machine$double.eps), 
-                           prtol = sqrt(.Machine$double.eps),
-                           ctol  = sqrt(.Machine$double.eps),
-                           crtol = sqrt(.Machine$double.eps),
-                           gtol = sqrt(.Machine$double.eps), 
+                           xtol  = sqrt(.Machine$double.eps),
+                           Cgoal = sqrt(.Machine$double.eps),
+                           gtol  = sqrt(.Machine$double.eps), 
+                           artol = 1e-2,
+                           frtol = -1,
+                           xrtol = -1,
                            diag = numeric(), epsfcn1 = sqrt(.Machine$double.eps), 
-                           epsfcn2 = sqrt(.Machine$double.eps), factor = 100, 
+                           epsfcn2 = sqrt(.Machine$double.eps), 
                            maxfev = integer(), maxjev = integer(),
-                           maxaev = integer(),
-                           maxiter = 50, nprint = 0){
+                           maxaev = integer(), maxiter = 50, print_level = 0,
+                           damp_mode = 1, center_diff = FALSE, 
+                           accept = 3, reject = 2, avmax  = 0.75,
+                           imethod = 0, iaccel = 1, ibold = 2, ibroyden = 0){
     
-    list(ftol = ftol, ptol = ptol, gtol = gtol, diag = diag, 
+    initial_factor <- if(imethod < 10) 1e-3 else 100
+    
+    list(ftol = ftol, ptol = xtol, Cgoal = Cgoal, gtol = gtol, 
+         artol = artol, frtol = frtol, xrtol = xrtol, diag = diag, 
          epsfcn1 = epsfcn1, epsfcn2 = epsfcn2, factor = factor, 
-         maxfev = maxfev, maxiter = maxiter, nprint = nprint)
+         maxfev = maxfev, maxjev = maxjev, maxaev = maxaev, 
+         maxiter = maxiter, print_level = print_level, damp_mode = damp_mode,
+         center_diff = center_diff, initial_factor = initial_factor, 
+         accept = accept, reject = reject, avmax = avmax,
+         imethod = imethod, iaccel = iaccel, ibold = ibold, ibroyden = ibroyden)
 }
 
 ## nls.lm is called from nlsLM and calls the optimisation routines through
 ## the external call to nls_lm.
 nls.ga <- function(par, lower=NULL, upper=NULL, fn, jac = NULL, acc = NULL, 
-                   control = nls.lm.control(), ...){
+                   callback = NULL, control = nls.lm.control(), ...){
     
     # Make a copy of the function provided as input
     fn1  <- function(par){
         fn(par, ...)
     }
     
-    # Make a copy of the jacobian function (if supplied)
+    # Make a copy of the jacobian, acceleration and callback functions 
+    # (if supplied)
     jac1 <- if(!is.null(jac)){
         function(par) jac(par, ...)
     }
@@ -37,27 +47,29 @@ nls.ga <- function(par, lower=NULL, upper=NULL, fn, jac = NULL, acc = NULL,
         function(par) acc(par, ...)
     }
     
-    # Set lower parameter bounds (if none specified)
+    callback1 <- if(!is.null(callback)){
+        function(par) callback(par, ...)
+    }
+    
+    # Set lower (and upper) parameter bounds (if none specified)
     if(is.null(lower)){
         lower <- rep(-Inf,length(par))
     }
     
-    # Set upper parameter bounds (if none specified)
     if(is.null(upper)){
         upper <- rep(Inf,length(par))
     }
     
-    # Error message for not specfying a lower bound for all parameters
+    # Error message for not specfying a lower (or upper) bound for all parameters
     if(length(lower) != length(par)){
         stop("length(lower) must be equal to length(par)")
     }
     
-    # Error message for not specfying an upper bound for all parameters
     if(length(upper) != length(par)){
         stop("length(upper) must be equal to length(par)")
     }
     
-    # Get nls_lm convergence criteria
+    # Get nls_ga control parameters
     ctrl <- nls.ga.control()
     
     # If additional control options were specified use them along side the
@@ -85,7 +97,7 @@ nls.ga <- function(par, lower=NULL, upper=NULL, fn, jac = NULL, acc = NULL,
     # Use nls_lm to generate optimised parameter values.
     sink(file = "geo_lm_debug.txt")
     out <- .Call("geo_lm", par, lower, upper, fn1, jac1, acc1, 
-                 ctrl, new.env())
+                 callback1, ctrl, new.env())
                  # PACKAGE = "geodesicLM")
     sink()
     # Convert hessian output into a matrix
