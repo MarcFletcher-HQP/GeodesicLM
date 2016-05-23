@@ -2,7 +2,7 @@
 # Clear Workspace 
 rm(list = ls())
 
-# setwd("P:/RIAP/RCS/Marc_Fletcher/C-code/GeodesicLM-master/GeodesicLM-master/R")
+setwd("P:/RIAP/RCS/Marc_Fletcher/C-code/GeodesicLM-master/GeodesicLM-master/R")
 
 # Attach Libraries
 library(magrittr)
@@ -34,6 +34,5 @@ fit.minpack <- nlsLM(formula = myform, data = data, start = init,
                      control = nls.lm.control(maxiter = 200))
 fit.geodesic <- nlsLM2(formula = myform, data = data, start = init,
                        control = control_args)
-
 
 dyn.unload(dllPath)

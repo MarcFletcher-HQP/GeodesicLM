@@ -15,17 +15,20 @@ OptStruct OS;
 SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEXP acc_fun,
 	SEXP callback, SEXP control, SEXP rho)
 {
+	/*************************************************************************************/
+	// Variable Declarations and some memory allocation
+	
 	int		i, j;
 	int		m, n, ldfjac, ldfacc;	// m - # data points, n - # pars, # ldfjac - nrow(jac)
-	int		info, nfev, njev, naev;	// keep track of iterations
+	int		info, nfev, njev, naev;	// keep track of iterations and evaluations
 	int		mode;
 
 	int		print_level, print_unit, imethod, iaccel, ibold, ibroyden, center_diff;
 	int		analytic_jac, analytic_avv, damp_mode;
 	double	accept, reject, lam, minlam, maxlam, avmax;
 
-	/* Copies of inputs are stored in the C structure OS, the following are pointers to specific locations
-	in OS */
+	/* inputs and outputs are stored in the structure pointed to by 'OS', seperate instances of
+	the parameter vector, jacobian, hessian etc. are passed to the geodesiclm subroutine. */
 	double  *par, *v, *a, *acc, *fvec, *fvec_new, *fjac, *facc, *hess, *r;
 	int     *ipvt;
 
@@ -35,31 +38,36 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		sexp_message, sexp_rsstrace;
 	SEXP    out, out_names;
 
-	char    lmfun_name[8], message[256];	// stores which of the two f77 calls was used.
+	char    lmfun_name[8], message[256];	// left-over from minpack.lm code
 
 	int     maxfev, maxjev, maxaev;		// termination criteria
 
-	OS = (OptStruct) R_alloc(1, sizeof(opt_struct));  // Allocate memory for structure containing inputs
-
-	PROTECT(OS->par = duplicate(par_arg));			// Store input values in OS
+	// Allocate memory for and assign inputs to opt_struct pointed to by OS.
+	OS = (OptStruct) R_alloc(1, sizeof(opt_struct)); 
+	PROTECT(OS->par = duplicate(par_arg));
 	PROTECT(OS->lower = duplicate(lower_arg));
 	PROTECT(OS->upper = duplicate(upper_arg));
-	n = length(OS->par);							// dimension of parameter space.
+	n = length(OS->par);						// dimension of parameter space.
 
 	PROTECT_INDEX ipx;			// index stores the location of the "diag" element within 'control'
-								// Note: Unlike 
-	/* Assign the inputs into the structure, OS. Assignment procedes depending on whether variable 
-	is "numeric" or a "list" */
+
+
+	/******************************************************************************/
+	// Input validation 
+
+	/* The following code appears to be a safe-guard against the user supplying a list containing 
+	non-numeric elements, or elements that cannot be coerced to numeric. */
 	switch (TYPEOF(OS->par)) {
-	case REALSXP:	// If par is of R-type "numeric" then do nothing.
+	case REALSXP:
 		break;
-	case VECSXP:	// If par is a list then use the list accessor/assignent functions to assign into OS, Recall that R lists are VECTORS internally.
+	case VECSXP:
 		for (i = 0; i < n; i++)
 			SET_VECTOR_ELT(OS->par, i, AS_NUMERIC(VECTOR_ELT(OS->par, i)));
 		break;
 	default:
 		error("`par' that you provided is non-list and non-numeric!");
 	}
+
 	switch (TYPEOF(OS->lower)) {
 	case REALSXP:
 		break;
@@ -70,6 +78,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	default:
 		error("`lower' that you provided is non-list and non-numeric!");
 	}
+
 	switch (TYPEOF(OS->upper)) {
 	case REALSXP:
 		break;
@@ -101,6 +110,10 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	m = length(eval_test);		// number of data points
 	UNPROTECT(1);				// unprotect eval_test
 
+
+	/************************************************************************************/
+	// Initialisation and more memory allocation
+
 	/* set flags to calculate jacobian and acceleration using finite differences, unless functions are
 	supplied by the user. */
 	analytic_jac = 0;
@@ -112,6 +125,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
 			error("evaluation of jac function returns non-sensible value!");
 	}
+	UNPROTECT(1);				// unprotect eval_test
 
 	if (isFunction(acc_fun)){
 		analytic_avv = 1;
@@ -119,16 +133,18 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
 			error("evaluation of acc_fun function returns non-sensible value!");
 	}
+	UNPROTECT(1);				// unprotect eval_test
 
 	if (isFunction(callback)) {
 		PROTECT(eval_test = eval(OS->callback, OS->env));
 		if (!IS_NUMERIC(eval_test) || length(eval_test) == 0)
 			error("evaluation of callback function returns non-sensible value!");
 	}
+	UNPROTECT(1);				// unprotect eval_test
 
-	ldfjac = m;		// jacobian has nrow == 'number of data points'
+	ldfjac = m;		// When is ldfjac not equal to 'm'?
 
-	// allocate memory
+	// allocate memory for variables to be passed to geodesiclm subroutine
 	a			= real_vector(n);
 	v			= real_vector(n);
 	par			= real_vector(n);
@@ -140,7 +156,9 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	r			= real_vector(n * n);
 	hess		= real_vector(n * n);
 
-	// assign control parameters and return values to OS
+	// read parameters from `control` and return values to seperate variables in OS
+	// getListElement:		retrieves elements from a list by name (obviously the list must
+	//						be named for this to work)
 	OS->ftol			= NUMERIC_VALUE(getListElement(control, "ftol"));
 	OS->frtol			= NUMERIC_VALUE(getListElement(control, "frtol"));
 	OS->xtol			= NUMERIC_VALUE(getListElement(control, "xtol"));
@@ -154,16 +172,13 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	OS->center_diff		= INTEGER_VALUE(getListElement(control, "center_diff")); //coercion to int from LGLSXP?
 	OS->diag			= real_vector(n * n);
 
-
-	/* Apparently, PROTECT_WITH_INDEX stores the location of the protected object so that the values
-	can be overwritten when necessary. getListElement is defined in get_element.c, the function retrieves
-	elements from a list by name (obviously the list must be named for this to work). Internally Matrices
-	are of type REALSXP (probably) and so all that needs to be done is to write a conversion between
-	the array passed too and from FORTRAN and the SEXP class object stored in OS->diag */
+	// PROTECT_WITH_INDEX:	Stores the location of the protected object so that the values
+	//						can be overwritten when necessary. (not really sure how/why this works)
+	// REPROTECT:			Not sure how this works or why it's used.
+	// duplicate control$diag to output and make a local copy to pass to geodesiclm subroutine
 	PROTECT_WITH_INDEX(sexp_diag = getListElement(control, "diag"), &ipx);
 	switch (TYPEOF(sexp_diag)) {
 	case REALSXP:
-		// having created a copy of "diag" assign pointers to each element of diag into OS.
 		if (length(sexp_diag) == n * n) {
 			REPROTECT(sexp_diag = duplicate(sexp_diag), ipx);
 			for (i = 0; i < n; i++) {
@@ -171,35 +186,33 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 					OS->diag[i + n * j] = NUMERIC_POINTER(sexp_diag)[i + j * n];
 				}
 			}
-			mode = 2;	// What's this for? (numeric code for outcome of length(sexp_diag) == n?)
+			mode = 2;	// numeric code for outcome of length(sexp_diag) == n*n?
 		}
 		else {
 			REPROTECT(sexp_diag = NEW_NUMERIC(n * n), ipx);
 			mode = 1;
 		}
-
-		// sexp_diag = SET_ARRAY_DIM(sexp_diag, n, n);		// set dim attribute of output array (2016-03-30-01:45)
 		break;
 	case VECSXP:
-		#ifndef NO_VECSXP
-		// Not exactly sure how the above approach translates to the VECSXP case
-		if (length(sexp_diag) == n) {
+		if (length(sexp_diag) == n * n) {
 			REPROTECT(sexp_diag = duplicate(sexp_diag), ipx);
 			for (i = 0; i < n; i++) {
-				SET_VECTOR_ELT(sexp_diag, i, AS_NUMERIC(VECTOR_ELT(sexp_diag, i)));
-				OS->diag[i] = NUMERIC_VALUE(VECTOR_ELT(sexp_diag, i));
+				for (j = 0; j < n; j++) {
+					SET_VECTOR_ELT(sexp_diag, i + j*n, AS_NUMERIC(VECTOR_ELT(sexp_diag, i + j*n)));
+					OS->diag[i + j*n] = NUMERIC_VALUE(VECTOR_ELT(sexp_diag, i + j*n));
+				}
 			}
 			mode = 2;
 		}
 		else {
-			REPROTECT(sexp_diag = NEW_LIST(n), ipx);
-			for (i = 0; i < n; i++)
-				SET_VECTOR_ELT(sexp_diag, i, NEW_NUMERIC(1));
+			REPROTECT(sexp_diag = NEW_LIST(n*n), ipx);
+			for (i = 0; i < n; i++) {
+				for (j = 0; j < n; j++) {
+					SET_VECTOR_ELT(sexp_diag, i + j*n, NEW_NUMERIC(1));
+				}
+			}
 			mode = 1;
 		}
-		#else 
-		error("control$diag must be of class 'numeric'!");
-		#endif
 		break;
 	default:
 		error("`diag' that you provided is non-list and non-numeric!");
@@ -224,9 +237,6 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	OS->reject			= NUMERIC_VALUE(getListElement(control, "reject"));
 	OS->avmax			= NUMERIC_VALUE(getListElement(control, "avmax"));
 	
-	/* The memory location reffered to by a pointer is the first "block" of memory allocated to that
-	variable. The references declared at the top of the function definition are used to refer to the
-	last "block" of memory allocated to each variable. */
 	if (IS_NUMERIC(OS->par)) {
 		for (i = 0; i < n; i++) // Set 'i' to 'n-1' essentially?
 			if (R_FINITE(NUMERIC_POINTER(OS->par)[i]))
@@ -242,17 +252,17 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 				error("Non-finite (or null) value for a parameter specified!");
 	}
 
-	// initialise number of iterations and iflag.
+	// initialise number of iterations and convergence flag.
 	OS->niter	  = 0;
 	OS->converged = 0;
 
 	// Set flags that dictate the method
-	info		 = 0;
-	print_unit	 = 6;
-	maxlam		 = -100;
+	info		 = 0;		// User termination flag
+	print_unit	 = 6;		// prints messages from geodesiclm to the console
+	maxlam		 = -100;	// Negative values provide no limit to the value of lambda
 	minlam		 = -0.1;
 
-	/*  */
+	// geodesiclm performs the optimisation.
 	F77_CALL(geodesiclm)(&fcn_lm, &fcn_ja, &fcn_ac, par, fvec, fjac, &n, &m,
 		&fcn_call, &info, &analytic_jac, &analytic_avv, &OS->center_diff, &OS->epsfcn1, &OS->epsfcn2,
 		OS->diag, &OS->damp_mode, &OS->niter, &nfev, &njev, &naev, &OS->maxiter, &maxfev, &maxjev, &maxaev,
@@ -260,15 +270,14 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		&OS->converged, &OS->print_level, &print_unit, &OS->imethod, &OS->iaccel, &OS->ibold, &OS->ibroyden,
 		&OS->initial_factor, &OS->accept, &OS->reject, &OS->avmax);
 
-	UNPROTECT(1);
 	strcpy(lmfun_name, "geodesiclm");
 
-	// Store diagnostic message for regression output
+	// Store diagnostic message for regression output, based on values of convergence/stopping flags
 	fcn_message(message, OS->converged, info, n, OS->niter, nfev, njev, naev);
 	if ( (OS->converged < 1 || 8 < OS->converged) && (info < -12 || info > 1) )
 		warning("%s: info = %d. %s\n\n", lmfun_name, info, message);
 
-	// allocate memory to store the hessian matrix, hessian is stored in a compressed format.
+	// Calculations for the hessian matrix (isn't this calculated in geodesiclm already?).
 	PROTECT(sexp_hess = NEW_NUMERIC(n*n));
 	for (j = 0; j < n; j++){
 		for (i = 0; i < n; i++) {
@@ -283,12 +292,12 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	for (i = 0; i < n*n; i++)
 		NUMERIC_POINTER(sexp_hess)[i] = hess[i];
 
-	// initialise residual vector and create reference to the end of the vector.
+	// Copy values of fvec to output REALSXP.
 	PROTECT(sexp_fvec = NEW_NUMERIC(m));
 	for (i = 0; i < m; i++)
 		NUMERIC_POINTER(sexp_fvec)[i] = fvec[i];
 
-	// initialise vector of the rss at each iteration and create reference to the end of the vector.
+	// Copy values of rsstrace to output REALSXP.
 	PROTECT(sexp_rsstrace = NEW_NUMERIC(OS->niter));
 	for (i = 0; i < OS->niter; i++)
 		NUMERIC_POINTER(sexp_rsstrace)[i] = OS->rsstrace[i];
@@ -310,12 +319,8 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 		}
 	}
 	else {
-		#ifndef NO_VECSXP
 		for (i = 0; i < n; i++)
 			NUMERIC_POINTER(VECTOR_ELT(sexp_diag, i))[0] = OS->diag[i];
-		#else 
-		error("control$diag must be of class 'numeric'!");
-		#endif
 	}
 
 
@@ -346,7 +351,7 @@ SEXP geo_lm(SEXP par_arg, SEXP lower_arg, SEXP upper_arg, SEXP fn, SEXP jac, SEX
 	SET_NAMES(out, out_names);
 
 	// remove protections
-	UNPROTECT(13);
+	UNPROTECT(18);
 
 	// aaaand done
 	return out;

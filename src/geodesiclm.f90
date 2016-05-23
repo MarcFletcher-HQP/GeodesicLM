@@ -241,6 +241,14 @@ SUBROUTINE geodesiclm(func, jacobian, Avv, &
 !    avmax an input double precision specifying the maximum norm of the geodesic acceleration 
 !    relative to the velocity vector.
 !
+!	 iaccel an undocumented input integer, appears to switch the geodesic acceleration correction on/off.
+!	 (but then why isn't the variable simply set to use Fortran's bool data type?)
+!
+!	 ibold an undocumented input integer, appears to switch the bold parameter update behaviour on/off. (bool?)
+!
+!	 ibroyden an undocumented input integer, appears to switch the broyden method of updating the jacobian
+!	 on/off. (bool?)
+!
 !*****************************************************************
 
   IMPLICIT NONE

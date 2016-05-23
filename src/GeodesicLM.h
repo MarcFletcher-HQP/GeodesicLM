@@ -1,6 +1,6 @@
 #ifndef GEODESIC_LM_HEADER_INCLUDED
 #define GEODESIC_LM_HEADER_INCLUDED 1
-#define NO_VECSXP		// if defined then the VECSXP case is ignored in some places
+// #define NO_VECSXP		// if defined then the VECSXP case is ignored in some places
 
 // #define LOCAL_HEADERS	// if defined then use local copies of the R header files (to appease intellisense)
 
